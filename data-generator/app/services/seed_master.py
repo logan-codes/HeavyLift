@@ -8,7 +8,7 @@ a seed script.
 
 from datetime import date, timedelta
 
-from common import EQUIPMENT_CATEGORIES, EQUIPMENT_PER_CATEGORY, SITE_STATUS_ACTIVE, db_connect
+from app.services.common import EQUIPMENT_CATEGORIES, EQUIPMENT_PER_CATEGORY, SITE_STATUS_ACTIVE, db_connect
 
 SITES = [
     ("Riverside Quarry", "1200 Quarry Rd, Denver, CO", 39.7392, -104.9903),

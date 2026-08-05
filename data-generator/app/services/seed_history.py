@@ -17,11 +17,11 @@ reliable, not-purely-random things to show.
 import random
 from datetime import date, datetime, time, timedelta
 
-from common import (
+from app.services.common import (
     EQUIPMENT_STATUS_ACTIVE, RENTAL_STATUS_ACTIVE, RENTAL_STATUS_COMPLETED,
     customer_profile, db_connect,
 )
-from seed_master import run as seed_master_run
+from app.services.seed_master import run as seed_master_run
 
 random.seed(42)  # reproducible demo data
 
@@ -281,7 +281,7 @@ def run():
 
     print(f"Seeded {len(planned_rentals)} completed historical rentals, "
           f"{len(active_rentals)} currently-active rentals, {len(history_rows)} usage_history rows.")
-    return {"active_rentals": active_rentals, "equipment": equipment}
+    return {"active_rentals": active_rentals, "planned_rentals": planned_rentals, "equipment": equipment}
 
 
 if __name__ == "__main__":

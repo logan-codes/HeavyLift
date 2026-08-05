@@ -81,14 +81,14 @@ services:
     ports:
       - "80:80"
 
-  # ── 5. Data generator (one-shot seeder) ────────────────────────────────────
+  # ── 5. Data generator (FastAPI server — seed on demand + live telemetry) ───
   data-generator:
     build:
       context: ./data-generator
-    container_name: cat-rental-seeder
-    restart: "no"
+    container_name: cat-rental-data-generator
+    restart: unless-stopped
     depends_on:
-      backend:
+      postgres:
         condition: service_healthy
     environment:
       DB_HOST: postgres
@@ -98,6 +98,13 @@ services:
       DB_PASSWORD: cat_rental_dev
       API_BASE_URL: http://backend:8080
       DEVICE_API_KEY: dev-only-device-key
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
 volumes:
   pgdata:

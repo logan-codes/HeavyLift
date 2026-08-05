@@ -6,7 +6,7 @@ has to go through the REST endpoint rather than direct SQL (see seed_history.py
 for why the historical backfill can't).
 
 Usage:
-    python stream_live.py [--iterations N] [--interval-seconds S]
+    python -m app.services.stream_live [--iterations N] [--interval-seconds S]
 """
 
 import argparse
@@ -15,7 +15,7 @@ import time
 
 import requests
 
-from common import API_BASE_URL, DEVICE_API_KEY, EQUIPMENT_STATUS_ACTIVE, EQUIPMENT_STATUS_IDLE, db_connect
+from app.services.common import API_BASE_URL, DEVICE_API_KEY, EQUIPMENT_STATUS_ACTIVE, EQUIPMENT_STATUS_IDLE, db_connect
 
 # Small jitter over a realistic interval keeps the implied speed between
 # readings well under the AI service's location-jump threshold (80 km/h).
