@@ -1,0 +1,51 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cat-rental-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cat_rental}
+    username: ${DB_USER:cat_rental}
+    password: ${DB_PASSWORD:cat_rental_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-please-1234567890}
+    expiration-ms: 86400000 # 24h
+  geofence:
+    radius-km: 5.0
+  ai-service:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+    shared-secret: ${AI_SERVICE_SECRET:dev-only-ai-secret}
+  device:
+    api-key: ${DEVICE_API_KEY:dev-only-device-key}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  alerts:
+    health-threshold: 40.0
+    maintenance-interval-days: 90
+    check-interval-ms: 60000
+
+logging:
+  level:
+    com.catrental: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
