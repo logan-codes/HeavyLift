@@ -1,0 +1,103 @@
+services:
+  # ── 1. Database ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16
+    container_name: cat-rental-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cat_rental
+      POSTGRES_USER: cat_rental
+      POSTGRES_PASSWORD: cat_rental_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cat_rental -d cat_rental"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── 2. Spring Boot backend ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+    container_name: cat-rental-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/cat_rental
+      DB_USER: cat_rental
+      DB_PASSWORD: cat_rental_dev
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_SECRET: dev-only-ai-secret
+      DEVICE_API_KEY: dev-only-device-key
+      JWT_SECRET: dev-only-secret-change-me-please-1234567890
+      CORS_ALLOWED_ORIGINS: http://localhost
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ── 3. FastAPI AI service ──────────────────────────────────────────────────
+  ai-service:
+    build:
+      context: ./ai-service
+    container_name: cat-rental-ai
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      db_host: postgres
+      db_port: 5432
+      db_name: cat_rental
+      db_user: cat_rental
+      db_password: cat_rental_dev
+      ai_service_secret: dev-only-ai-secret
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  # ── 4. Vite/React frontend (Nginx) ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+    container_name: cat-rental-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "80:80"
+
+  # ── 5. Data generator (one-shot seeder) ────────────────────────────────────
+  data-generator:
+    build:
+      context: ./data-generator
+    container_name: cat-rental-seeder
+    restart: "no"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cat_rental
+      DB_USER: cat_rental
+      DB_PASSWORD: cat_rental_dev
+      API_BASE_URL: http://backend:8080
+      DEVICE_API_KEY: dev-only-device-key
+
+volumes:
+  pgdata:
