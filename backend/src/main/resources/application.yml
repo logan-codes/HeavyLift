@@ -5,9 +5,9 @@ spring:
   application:
     name: cat-rental-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/cat_rental
-    username: cat_rental
-    password: cat_rental_dev
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cat_rental}
+    username: ${DB_USER:cat_rental}
+    password: ${DB_PASSWORD:cat_rental_dev}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -31,7 +31,7 @@ app:
   device:
     api-key: ${DEVICE_API_KEY:dev-only-device-key}
   cors:
-    allowed-origins: http://localhost:5173
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   alerts:
     health-threshold: 40.0
     maintenance-interval-days: 90
@@ -40,3 +40,12 @@ app:
 logging:
   level:
     com.catrental: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
