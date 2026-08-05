@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Cache npm install
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Build with an empty API base so all /api/* calls are relative (proxied by nginx)
 COPY . .
