@@ -1,17 +1,16 @@
-"""Orchestrates the full synthetic dataset: master data, ~6 months of rental
-history with backdated usage_history, then live telemetry streaming for the
-currently-active rentals.
+"""CLI orchestrator: seed master data + 6-month history, then optionally stream
+live telemetry.  The FastAPI server (app/main.py) exposes the same operations
+over HTTP; this script is kept for local/manual use.
 
 Usage:
-    python generate.py                  # seed everything, then stream live telemetry
-    python generate.py --seed-only      # seed master + history, skip live streaming
-    python generate.py --stream-only    # skip seeding, just stream (data already seeded)
+    uv run python generate.py                  # seed everything, then stream live telemetry
+    uv run python generate.py --seed-only      # seed master + history, skip live streaming
+    uv run python generate.py --stream-only    # skip seeding, just stream (data already seeded)
 """
 
 import argparse
 
-import seed_history
-import stream_live
+from app.services import seed_history, stream_live
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
