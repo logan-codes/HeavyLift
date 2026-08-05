@@ -1,0 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 43 96% 56%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 25% 15%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 215 25% 15%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
+    --ring: 43 96% 56%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 dark:bg-navy-900/80 backdrop-blur-xl border border-white/20 dark:border-white/5;
+  }
+
+  .glass-card {
+    @apply bg-white/60 dark:bg-navy-800/60 backdrop-blur-lg border border-white/30 dark:border-white/10 rounded-xl shadow-glass;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-healthy { @apply bg-status-healthy; }
+  .status-dot-warning { @apply bg-status-warning; }
+  .status-dot-critical { @apply bg-status-critical; }
+  .status-dot-maintenance { @apply bg-status-maintenance; }
+  .status-dot-idle { @apply bg-status-idle; }
+
+  .kpi-card {
+    @apply bg-card rounded-xl p-5 border border-border shadow-card hover:shadow-card-hover transition-all duration-300;
+  }
+
+  .page-header {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
+  .page-description {
+    @apply text-muted-foreground text-sm mt-1;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-200;
+  }
+
+  .sidebar-link-active {
+    @apply text-construction-400 bg-construction-400/10 hover:text-construction-400 hover:bg-construction-400/15;
+  }
+
+  .chart-container {
+    @apply bg-card rounded-xl p-5 border border-border shadow-card;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  z-index: 1;
+}
+
+.dark .leaflet-tile-pane {
+  filter: brightness(0.7) contrast(1.1) saturate(0.8);
+}
+
+/* Recharts dark mode */
+.dark .recharts-cartesian-axis-tick-value {
+  fill: hsl(215 20% 55%) !important;
+}
+
+.dark .recharts-cartesian-grid line {
+  stroke: hsl(215 25% 18%) !important;
+}
