@@ -2,7 +2,7 @@ services:
   # ── 1. Database ────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16
-    container_name: cat-rental-postgres
+    container_name: heavylift-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: cat_rental
@@ -22,7 +22,7 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: cat-rental-backend
+    container_name: heavylift-backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,7 +53,7 @@ services:
   # ── 3. Kafka (KRaft, single node) ────────────────────────────────────────────
   kafka:
     image: apache/kafka:3.7.0
-    container_name: cat-rental-kafka
+    container_name: heavylift-kafka
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -79,7 +79,7 @@ services:
   ai-service:
     build:
       context: ./ai-service
-    container_name: cat-rental-ai
+    container_name: heavylift-ai
     restart: unless-stopped
     depends_on:
       postgres:
@@ -108,7 +108,7 @@ services:
   frontend:
     build:
       context: ./frontend
-    container_name: cat-rental-frontend
+    container_name: heavylift-frontend
     restart: unless-stopped
     depends_on:
       backend:
@@ -120,7 +120,7 @@ services:
   data-generator:
     build:
       context: ./data-generator
-    container_name: cat-rental-data-generator
+    container_name: heavylift-data-generator
     restart: unless-stopped
     depends_on:
       postgres:
