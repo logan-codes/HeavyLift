@@ -49,9 +49,12 @@ def _fetch_active_equipment() -> list[dict]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT r.equipment_id, ur.latitude, ur.longitude, ur.operator_id, ur.fuel_gauge, e.health
+                SELECT r.equipment_id, ur.latitude, ur.longitude, ur.operator_id, ur.fuel_gauge,
+                       e.health, ec.name AS machine_type,
+                       COALESCE(ur.engine_hours, (random() * 4000 + 1000)::numeric(10,2)) AS engine_hours
                 FROM rentals r
                 JOIN equipment e ON e.equipment_id = r.equipment_id
+                JOIN equipment_categories ec ON ec.category_id = e.category_id
                 LEFT JOIN usage_realtime ur ON ur.equipment_id = r.equipment_id
                 WHERE r.is_active = TRUE
                 """
@@ -68,9 +71,54 @@ def _fetch_active_equipment() -> list[dict]:
             "operator_id": operator_id,
             "fuel": float(fuel_gauge) if fuel_gauge is not None else 80.0,
             "health": float(health) if health is not None else 90.0,
+            "machine_type": machine_type or "Unknown",
+            "engine_hours": float(engine_hours) if engine_hours is not None else 2000.0,
         }
-        for equipment_id, lat, lon, operator_id, fuel_gauge, health in rows
+        for equipment_id, lat, lon, operator_id, fuel_gauge, health, machine_type, engine_hours in rows
     ]
+
+
+# ── Per-machine-type metric simulation constants ───────────────────────────────
+# Derived from CSV analysis: all types have metrics with mean≈60, std≈15 (0–100 scale).
+# A small type-specific offset makes each equipment class distinguishable.
+_METRIC_PROFILE: dict[str, dict] = {
+    "Excavator":              {"mean": 60.0, "std": 15.0, "stress": 1.05},
+    "Mini Excavator":         {"mean": 59.0, "std": 14.0, "stress": 0.95},
+    "Bulldozer":              {"mean": 60.0, "std": 15.0, "stress": 1.08},
+    "Wheel Loader":           {"mean": 60.2, "std": 15.0, "stress": 1.0},
+    "Motor Grader":           {"mean": 59.5, "std": 14.8, "stress": 1.0},
+    "Skid Steer Loader":      {"mean": 60.0, "std": 15.0, "stress": 0.95},
+    "Backhoe Loader":         {"mean": 60.0, "std": 15.0, "stress": 1.02},
+    "Telehandler":            {"mean": 60.0, "std": 15.0, "stress": 1.0},
+    "Forklift":               {"mean": 60.7, "std": 14.5, "stress": 0.90},
+    "Tower Crane":            {"mean": 60.0, "std": 15.0, "stress": 1.1},
+    "Mobile Crane":           {"mean": 60.0, "std": 15.0, "stress": 1.05},
+    "Crawler Crane":          {"mean": 59.4, "std": 15.0, "stress": 1.1},
+    "Road Roller":            {"mean": 60.0, "std": 15.0, "stress": 1.0},
+    "Asphalt Paver":          {"mean": 60.0, "std": 15.0, "stress": 1.03},
+    "Concrete Mixer Truck":   {"mean": 60.0, "std": 15.0, "stress": 0.98},
+    "Concrete Pump":          {"mean": 60.0, "std": 15.0, "stress": 1.02},
+    "Mining Truck":           {"mean": 59.7, "std": 15.0, "stress": 1.12},
+    "Articulated Dump Truck": {"mean": 60.0, "std": 15.0, "stress": 1.08},
+    "Rotary Drill Rig":       {"mean": 59.9, "std": 14.9, "stress": 1.15},
+    "Generator":              {"mean": 60.0, "std": 15.0, "stress": 0.85},
+}
+_DEFAULT_PROFILE = {"mean": 60.0, "std": 15.0, "stress": 1.0}
+
+
+def _generate_metrics(machine_type: str, health: float) -> list[float]:
+    """Return 8 metric values sampled from a Gaussian centred on the type's profile.
+
+    Low health slightly skews metrics toward the extremes (simulating wear).
+    """
+    profile = _METRIC_PROFILE.get(machine_type, _DEFAULT_PROFILE)
+    wear_bias = (100.0 - health) / 100.0 * 10.0  # up to +10 push toward extreme
+    metrics = []
+    for _ in range(8):
+        val = random.gauss(profile["mean"] + wear_bias * (0.5 - random.random() * 2),
+                          profile["std"])
+        metrics.append(round(max(0.0, min(100.0, val)), 4))
+    return metrics
 
 
 async def _stream_loop(iterations: int, interval_seconds: float) -> None:
@@ -102,6 +150,10 @@ async def _stream_loop(iterations: int, interval_seconds: float) -> None:
                 if e["fuel"] < 15 and random.random() < 0.3:
                     e["fuel"] = round(random.uniform(90, 100), 2)
 
+                # ── Simulate ML diagnostic telemetry ──────────────────────────────
+                e["engine_hours"] = round(e["engine_hours"] + random.uniform(0.01, 0.05), 2)
+                metrics = _generate_metrics(e["machine_type"], e["health"])
+
                 payload = {
                     "equipmentId": e["equipment_id"],
                     "latitude": round(e["lat"], 7),
@@ -110,6 +162,15 @@ async def _stream_loop(iterations: int, interval_seconds: float) -> None:
                     "statusId": status_id,
                     "fuelGauge": round(e["fuel"], 2),
                     "health": round(e["health"], 2),
+                    "engineHours": e["engine_hours"],
+                    "metric1": metrics[0],
+                    "metric2": metrics[1],
+                    "metric3": metrics[2],
+                    "metric4": metrics[3],
+                    "metric5": metrics[4],
+                    "metric6": metrics[5],
+                    "metric7": metrics[6],
+                    "metric8": metrics[7],
                 }
                 try:
                     resp = await client.post(f"{API_BASE_URL}/api/telemetry", json=payload, headers=headers)

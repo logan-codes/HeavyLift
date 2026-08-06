@@ -68,6 +68,16 @@ public class TelemetryService {
         realtime.setOperator(operator);
         realtime.setStatus(status);
         realtime.setFuelGauge(event.fuelGauge());
+        // ML diagnostic telemetry
+        realtime.setEngineHours(event.engineHours());
+        realtime.setMetric1(event.metric1());
+        realtime.setMetric2(event.metric2());
+        realtime.setMetric3(event.metric3());
+        realtime.setMetric4(event.metric4());
+        realtime.setMetric5(event.metric5());
+        realtime.setMetric6(event.metric6());
+        realtime.setMetric7(event.metric7());
+        realtime.setMetric8(event.metric8());
         usageRealtimeRepository.save(realtime);
 
         equipment.setLatitude(event.latitude());
@@ -88,12 +98,25 @@ public class TelemetryService {
                 .status(status)
                 .fuelGauge(event.fuelGauge())
                 .health(event.health())
+                // ML diagnostic telemetry
+                .engineHours(event.engineHours())
+                .metric1(event.metric1())
+                .metric2(event.metric2())
+                .metric3(event.metric3())
+                .metric4(event.metric4())
+                .metric5(event.metric5())
+                .metric6(event.metric6())
+                .metric7(event.metric7())
+                .metric8(event.metric8())
                 .build();
         usageHistoryRepository.save(history);
 
         TelemetryEventPayload payload = new TelemetryEventPayload(
                 event.equipmentId(), recordedAt, event.latitude(), event.longitude(),
-                event.operatorId(), event.statusId(), event.fuelGauge(), event.health());
+                event.operatorId(), event.statusId(), event.fuelGauge(), event.health(),
+                event.engineHours(),
+                event.metric1(), event.metric2(), event.metric3(), event.metric4(),
+                event.metric5(), event.metric6(), event.metric7(), event.metric8());
 
         try {
             kafkaTemplate.send(appProperties.getKafka().getTopics().getTelemetryRaw(),

@@ -39,4 +39,32 @@ public class UsageRealtime {
 
     @Column(name = "fuel_gauge", precision = 5, scale = 2)
     private BigDecimal fuelGauge;
+
+    // ── ML diagnostic telemetry ──────────────────────────────────────────
+    @Column(name = "engine_hours", precision = 10, scale = 2)
+    private BigDecimal engineHours;
+
+    @Column(name = "metric_1", precision = 10, scale = 4)
+    private BigDecimal metric1;
+
+    @Column(name = "metric_2", precision = 10, scale = 4)
+    private BigDecimal metric2;
+
+    @Column(name = "metric_3", precision = 10, scale = 4)
+    private BigDecimal metric3;
+
+    @Column(name = "metric_4", precision = 10, scale = 4)
+    private BigDecimal metric4;
+
+    @Column(name = "metric_5", precision = 10, scale = 4)
+    private BigDecimal metric5;
+
+    @Column(name = "metric_6", precision = 10, scale = 4)
+    private BigDecimal metric6;
+
+    @Column(name = "metric_7", precision = 10, scale = 4)
+    private BigDecimal metric7;
+
+    @Column(name = "metric_8", precision = 10, scale = 4)
+    private BigDecimal metric8;
 }

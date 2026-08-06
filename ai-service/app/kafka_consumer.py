@@ -25,10 +25,26 @@ import psycopg
 from app.config import settings
 from app.features import compute_telemetry_features, fetch_previous_reading
 from app import kafka_producer
+from app.model_registry import ModelRegistry
 
 log = logging.getLogger(__name__)
 
 _consumer_task: asyncio.Task | None = None
+
+# ── ML model registry (loaded once at import) ─────────────────────────────────
+_model_registry: ModelRegistry | None = None
+
+
+def get_registry() -> ModelRegistry:
+    """Lazy-initialize the registry on first access."""
+    global _model_registry
+    if _model_registry is None:
+        _model_registry = ModelRegistry()
+    return _model_registry
+
+
+# ── In-process equipment_id → machine_type cache ─────────────────────────────
+_machine_type_cache: dict[int, str] = {}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +60,29 @@ def _ts(value) -> str:
     if isinstance(value, datetime):
         return value.isoformat()
     return str(value)
+
+
+def _resolve_machine_type(conn, equipment_id: int) -> str | None:
+    """Lookup equipment → category name, with in-process caching."""
+    if equipment_id in _machine_type_cache:
+        return _machine_type_cache[equipment_id]
+    try:
+        row = conn.execute(
+            """
+            SELECT ec.name
+            FROM equipment e
+            JOIN equipment_categories ec ON ec.category_id = e.category_id
+            WHERE e.equipment_id = %s
+            """,
+            (equipment_id,),
+        ).fetchone()
+        mtype = row["name"] if row else None
+        if mtype:
+            _machine_type_cache[equipment_id] = mtype
+        return mtype
+    except Exception as exc:
+        log.debug("Could not resolve machine type for %s: %s", equipment_id, exc)
+        return None
 
 
 # ── Per-event ML logic ────────────────────────────────────────────────────────
@@ -263,6 +302,53 @@ async def _handle_message(data: dict) -> None:
             utilization = _run_utilization(conn, equipment_id)
             if utilization:
                 predictions.append(utilization)
+
+            # ── LightGBM / XGBoost inference ─────────────────────────────────
+            machine_type = _resolve_machine_type(conn, equipment_id)
+            if machine_type:
+                ml_result = get_registry().predict(machine_type, data)
+                if ml_result:
+                    failure_prob = ml_result.get("failure_prob", 0.0)
+                    maint_prob   = ml_result.get("maintenance_prob", 0.0)
+
+                    if failure_prob >= 0.5:
+                        predictions.append({
+                            "predictionType": "ml_failure_risk",
+                            "anomalyType": "predicted_failure",
+                            "severity": "critical",
+                            "score": failure_prob,
+                            "detail": (
+                                f"{machine_type} failure probability {failure_prob:.1%} "
+                                f"(ML model — LightGBM/XGBoost)."
+                            ),
+                        })
+                    elif failure_prob >= 0.25:
+                        predictions.append({
+                            "predictionType": "ml_failure_risk",
+                            "anomalyType": "elevated_failure_risk",
+                            "severity": "warning",
+                            "score": failure_prob,
+                            "detail": (
+                                f"{machine_type} elevated failure probability {failure_prob:.1%} "
+                                f"(ML model — LightGBM/XGBoost)."
+                            ),
+                        })
+
+                    if maint_prob >= 0.4:
+                        predictions.append({
+                            "predictionType": "ml_maintenance_risk",
+                            "severity": "warning" if maint_prob < 0.7 else "critical",
+                            "score": maint_prob,
+                            "detail": (
+                                f"{machine_type} maintenance probability {maint_prob:.1%} "
+                                f"(ML model — LightGBM/XGBoost)."
+                            ),
+                        })
+
+                    log.debug(
+                        "equipment %s (%s) → ML failure_prob=%.3f maint_prob=%.3f",
+                        equipment_id, machine_type, failure_prob, maint_prob,
+                    )
         finally:
             conn.close()
     except Exception as exc:

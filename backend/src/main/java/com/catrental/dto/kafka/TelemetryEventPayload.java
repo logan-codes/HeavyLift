@@ -12,6 +12,16 @@ public record TelemetryEventPayload(
         Integer operatorId,
         Integer statusId,
         BigDecimal fuelGauge,
-        BigDecimal health
+        BigDecimal health,
+        // ML diagnostic telemetry — null when not reported by the device
+        BigDecimal engineHours,
+        BigDecimal metric1,
+        BigDecimal metric2,
+        BigDecimal metric3,
+        BigDecimal metric4,
+        BigDecimal metric5,
+        BigDecimal metric6,
+        BigDecimal metric7,
+        BigDecimal metric8
 ) {
 }
