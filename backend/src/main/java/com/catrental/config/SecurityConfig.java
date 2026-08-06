@@ -75,6 +75,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/telemetry", "/api/telemetry/**").permitAll() // guarded by device API key instead of user JWT
+                        .requestMatchers("/ws/**").permitAll() // guarded by JwtHandshakeInterceptor's ?token= check instead of the JWT filter
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )

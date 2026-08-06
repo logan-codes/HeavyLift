@@ -17,6 +17,7 @@ public class AppProperties {
     private final Device device = new Device();
     private final Cors cors = new Cors();
     private final Alerts alerts = new Alerts();
+    private final Kafka kafka = new Kafka();
 
     @Getter
     @Setter
@@ -56,5 +57,18 @@ public class AppProperties {
         private double healthThreshold;
         private int maintenanceIntervalDays;
         private long checkIntervalMs;
+    }
+
+    @Getter
+    @Setter
+    public static class Kafka {
+        private final Topics topics = new Topics();
+
+        @Getter
+        @Setter
+        public static class Topics {
+            private String telemetryRaw;
+            private String predictionsCreated;
+        }
     }
 }

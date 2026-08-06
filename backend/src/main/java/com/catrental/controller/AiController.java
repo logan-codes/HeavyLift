@@ -36,4 +36,9 @@ public class AiController {
     public AiResult<PredictReturnResponseDto> predictReturn(@PathVariable Integer rentalId) {
         return aiClientService.getPredictReturn(rentalId);
     }
+
+    @GetMapping("/maintenance-risk/{equipmentId}")
+    public AiResult<MaintenanceRiskResponseDto> maintenanceRisk(@PathVariable Integer equipmentId) {
+        return aiClientService.getMaintenanceRisk(equipmentId);
+    }
 }
