@@ -87,7 +87,7 @@ export function AlertsPage({ siteId, alertType }: AlertsPageProps) {
                   {a.equipmentId != null && (
                     <> — <Link to={`/equipment/${a.equipmentId}`}>{a.equipmentName}</Link></>
                   )}
-                  {a.siteName && <span className="hint"> · {a.siteName}</span>}
+                  {a.siteName && <span className="alert-site-badge">{a.siteName}</span>}
                   <div>{a.message}</div>
                   <span className="anomaly-time">{new Date(a.createdOn).toLocaleString()}</span>
                 </div>

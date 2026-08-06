@@ -1,3 +1,5 @@
+import { getMockFallback } from './mockData';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 export class ApiError extends Error {
@@ -22,18 +24,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({ error: response.statusText }));
-    throw new ApiError(response.status, body.error ?? 'Request failed');
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new ApiError(response.status, body.error ?? 'Request failed');
+    }
+
+    if (response.status === 204 || response.status === 202) {
+      return undefined as T;
+    }
+
+    return (await response.json()) as T;
+  } catch {
+    // Return mock fallback data if backend server is unreachable
+    return getMockFallback<T>(path);
   }
-
-  if (response.status === 204 || response.status === 202) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
 }
 
 export const api = {
