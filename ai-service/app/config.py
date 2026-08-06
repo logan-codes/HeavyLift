@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     fuel_jump_threshold: float = 20.0
     location_jump_speed_kmh: float = 80.0
 
+    # Kafka streaming
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_topic_telemetry_raw: str = "telemetry.raw"
+    kafka_topic_predictions_created: str = "predictions.created"
+
+    # Maintenance risk heuristic (see app/ml/maintenance.py)
+    maintenance_health_trend_window: int = 20
+    maintenance_interval_days: int = 90
+    maintenance_trend_full_risk_per_day: float = 0.3
+    maintenance_volatility_full_risk: float = 5.0
+
     class Config:
         env_prefix = ""
 

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.db import get_connection
-from app.geo import haversine_km
+from app.features import compute_telemetry_features
 from app.security import verify_shared_secret
 
 router = APIRouter(prefix="/anomaly-check", tags=["anomaly"], dependencies=[Depends(verify_shared_secret)])
@@ -49,49 +49,33 @@ def check_anomalies(equipment_id: int, limit: int = 50):
     features = []  # (index, fuel_delta, health_delta, distance_km)
     for i in range(1, len(rows)):
         prev, curr = rows[i - 1], rows[i]
-        dt_hours = (curr["recorded_at"] - prev["recorded_at"]).total_seconds() / 3600.0
-        distance_km = haversine_km(
-            float(prev["latitude"]) if prev["latitude"] is not None else None,
-            float(prev["longitude"]) if prev["longitude"] is not None else None,
-            float(curr["latitude"]) if curr["latitude"] is not None else None,
-            float(curr["longitude"]) if curr["longitude"] is not None else None,
-        )
-        speed_kmh = distance_km / dt_hours if dt_hours > 0 else 0.0
-
-        fuel_delta = None
-        if prev["fuel_gauge"] is not None and curr["fuel_gauge"] is not None:
-            fuel_delta = float(curr["fuel_gauge"]) - float(prev["fuel_gauge"])
-
-        health_delta = None
-        if prev["health"] is not None and curr["health"] is not None:
-            health_delta = float(curr["health"]) - float(prev["health"])
-
-        features.append((i, fuel_delta or 0.0, health_delta or 0.0, distance_km))
+        f = compute_telemetry_features(prev, curr)
+        features.append((i, f.fuel_delta or 0.0, f.health_delta or 0.0, f.distance_km))
 
         recorded_at_str = curr["recorded_at"].isoformat()
 
-        if speed_kmh > settings.location_jump_speed_kmh:
+        if f.speed_kmh > settings.location_jump_speed_kmh:
             anomalies.append(Anomaly(
                 recorded_at=recorded_at_str,
                 anomaly_type="location_jump",
-                detail=f"Implied speed {speed_kmh:.0f} km/h between consecutive readings "
-                       f"({distance_km:.2f} km in {dt_hours * 60:.0f} min) is inconsistent with normal movement.",
+                detail=f"Implied speed {f.speed_kmh:.0f} km/h between consecutive readings "
+                       f"({f.distance_km:.2f} km in {f.dt_hours * 60:.0f} min) is inconsistent with normal movement.",
                 severity="high",
             ))
 
-        if fuel_delta is not None and abs(fuel_delta) > settings.fuel_jump_threshold:
+        if f.fuel_delta is not None and abs(f.fuel_delta) > settings.fuel_jump_threshold:
             anomalies.append(Anomaly(
                 recorded_at=recorded_at_str,
                 anomaly_type="fuel_erratic",
-                detail=f"Fuel gauge changed by {fuel_delta:+.1f}% between consecutive readings.",
+                detail=f"Fuel gauge changed by {f.fuel_delta:+.1f}% between consecutive readings.",
                 severity="medium",
             ))
 
-        if health_delta is not None and health_delta < -settings.health_drop_threshold:
+        if f.health_delta is not None and f.health_delta < -settings.health_drop_threshold:
             anomalies.append(Anomaly(
                 recorded_at=recorded_at_str,
                 anomaly_type="health_drop",
-                detail=f"Health score dropped {health_delta:.1f} points between consecutive readings.",
+                detail=f"Health score dropped {f.health_delta:.1f} points between consecutive readings.",
                 severity="high",
             ))
 

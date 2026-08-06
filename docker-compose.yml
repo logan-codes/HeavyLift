@@ -2,7 +2,7 @@ services:
   # ── 1. Database ────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16
-    container_name: cat-rental-postgres
+    container_name: heavylift-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: cat_rental
@@ -22,10 +22,12 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: cat-rental-backend
+    container_name: heavylift-backend
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/cat_rental
@@ -36,6 +38,9 @@ services:
       DEVICE_API_KEY: dev-only-device-key
       JWT_SECRET: dev-only-secret-change-me-please-1234567890
       CORS_ALLOWED_ORIGINS: http://localhost
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC_TELEMETRY_RAW: telemetry.raw
+      KAFKA_TOPIC_PREDICTIONS_CREATED: predictions.created
     ports:
       - "8080:8080"
     healthcheck:
@@ -45,14 +50,42 @@ services:
       retries: 10
       start_period: 60s
 
-  # ── 3. FastAPI AI service ──────────────────────────────────────────────────
+  # ── 3. Kafka (KRaft, single node) ────────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: heavylift-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_OPTS: "-Xms256M -Xmx512M"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  # ── 4. FastAPI AI service ──────────────────────────────────────────────────
   ai-service:
     build:
       context: ./ai-service
-    container_name: cat-rental-ai
+    container_name: heavylift-ai
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     environment:
       db_host: postgres
@@ -61,6 +94,9 @@ services:
       db_user: cat_rental
       db_password: cat_rental_dev
       ai_service_secret: dev-only-ai-secret
+      kafka_bootstrap_servers: kafka:9092
+      kafka_topic_telemetry_raw: telemetry.raw
+      kafka_topic_predictions_created: predictions.created
     ports:
       - "8000:8000"
     healthcheck:
@@ -69,11 +105,11 @@ services:
       timeout: 5s
       retries: 8
 
-  # ── 4. Vite/React frontend (Nginx) ─────────────────────────────────────────
+  # ── 5. Vite/React frontend (Nginx) ─────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
-    container_name: cat-rental-frontend
+    container_name: heavylift-frontend
     restart: unless-stopped
     depends_on:
       backend:
@@ -81,14 +117,16 @@ services:
     ports:
       - "80:80"
 
-  # ── 5. Data generator (FastAPI server — seed on demand + live telemetry) ───
+  # ── 6. Data generator (FastAPI server — seed on demand + live telemetry) ───
   data-generator:
     build:
       context: ./data-generator
-    container_name: cat-rental-data-generator
+    container_name: heavylift-data-generator
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     environment:
       DB_HOST: postgres

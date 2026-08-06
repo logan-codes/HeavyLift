@@ -11,6 +11,10 @@ const LANDING_BY_ROLE: Record<string, string> = {
 
 export function RoleLanding() {
   const { user } = useAuth();
-  const target = (user?.role && LANDING_BY_ROLE[user.role]) || '/equipment';
+  const isAdminDisabled = import.meta.env.VITE_DISABLE_ADMIN === 'true';
+  let target = (user?.role && LANDING_BY_ROLE[user.role]) || '/equipment';
+  if (isAdminDisabled && target.startsWith('/admin')) {
+    target = '/equipment';
+  }
   return <Navigate to={target} replace />;
 }

@@ -8,6 +8,7 @@ import com.catrental.entity.*;
 import com.catrental.repository.*;
 import com.catrental.util.GeoUtils;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,19 +34,38 @@ public class AlertService {
     private final UsageRealtimeRepository usageRealtimeRepository;
     private final StatusRepository statusRepository;
     private final AppProperties appProperties;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public AlertService(AlertRepository alertRepository,
                          RentalRepository rentalRepository,
                          EquipmentRepository equipmentRepository,
                          UsageRealtimeRepository usageRealtimeRepository,
                          StatusRepository statusRepository,
-                         AppProperties appProperties) {
+                         AppProperties appProperties,
+                         SimpMessagingTemplate messagingTemplate) {
         this.alertRepository = alertRepository;
         this.rentalRepository = rentalRepository;
         this.equipmentRepository = equipmentRepository;
         this.usageRealtimeRepository = usageRealtimeRepository;
         this.statusRepository = statusRepository;
         this.appProperties = appProperties;
+        this.messagingTemplate = messagingTemplate;
+    }
+
+    /**
+     * Entry point for alert sources outside the periodic checks below (currently:
+     * {@link PredictionEventListener} reacting to a warning/critical ai-service prediction).
+     * Reuses the same open-alert dedup guard as the scheduled checks.
+     */
+    @Transactional
+    public void createOrSkipAlert(Integer equipmentId, String alertType, String message) {
+        if (alertRepository.existsByEquipment_EquipmentIdAndAlertTypeAndStatus_StatusId(
+                equipmentId, alertType, StatusConstants.ALERT_OPEN)) {
+            return;
+        }
+        Equipment equipment = equipmentRepository.findById(equipmentId)
+                .orElseThrow(() -> new EntityNotFoundException("No equipment with id " + equipmentId));
+        createAlert(equipment, null, alertType, requireStatus(StatusConstants.ALERT_OPEN), message);
     }
 
     @Transactional
@@ -170,6 +190,7 @@ public class AlertService {
                 .editedOn(now)
                 .build();
         alertRepository.save(alert);
+        messagingTemplate.convertAndSend("/topic/alerts", toDto(alert));
     }
 
     private Status requireStatus(int statusId) {

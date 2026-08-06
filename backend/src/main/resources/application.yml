@@ -18,6 +18,20 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: cat-rental-backend
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.catrental.dto.kafka
+        spring.json.value.default.type: com.catrental.dto.kafka.PredictionEventPayload
+        spring.json.use.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 app:
   jwt:
@@ -36,6 +50,10 @@ app:
     health-threshold: 40.0
     maintenance-interval-days: 90
     check-interval-ms: 60000
+  kafka:
+    topics:
+      telemetry-raw: ${KAFKA_TOPIC_TELEMETRY_RAW:telemetry.raw}
+      predictions-created: ${KAFKA_TOPIC_PREDICTIONS_CREATED:predictions.created}
 
 logging:
   level:

@@ -51,6 +51,13 @@ public class AiClientService {
                 .body(PredictReturnResponseDto.class));
     }
 
+    public AiResult<MaintenanceRiskResponseDto> getMaintenanceRisk(Integer equipmentId) {
+        return call(() -> aiServiceRestClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/maintenance-risk/{id}").build(equipmentId))
+                .retrieve()
+                .body(MaintenanceRiskResponseDto.class));
+    }
+
     private <T> AiResult<T> call(java.util.function.Supplier<T> supplier) {
         try {
             return AiResult.ok(supplier.get());

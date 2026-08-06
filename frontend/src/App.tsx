@@ -14,29 +14,38 @@ import { SitesPage } from './pages/admin/SitesPage';
 import { CustomersPage } from './pages/admin/CustomersPage';
 import { OperatorsPage } from './pages/admin/OperatorsPage';
 import { UsersPage } from './pages/admin/UsersPage';
+import { HomePage } from './pages/HomePage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
-import { RoleLanding } from './routes/RoleLanding';
 import { AppShell } from './components/AppShell';
 
 export function App() {
+  const isAdminDisabled = import.meta.env.VITE_DISABLE_ADMIN === 'true';
+
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
-            <Route path="/" element={<RoleLanding />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/home" element={<HomePage />} />
 
             <Route path="/equipment" element={<EquipmentList />} />
             <Route path="/equipment/:id" element={<EquipmentDetail />} />
             <Route path="/map" element={<MapView />} />
             <Route path="/alerts" element={<AlertsPage />} />
 
-            <Route path="/admin" element={<AdminOverview />} />
-            <Route path="/admin/sites" element={<SitesPage />} />
-            <Route path="/admin/customers" element={<CustomersPage />} />
-            <Route path="/admin/operators" element={<OperatorsPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
+            {!isAdminDisabled ? (
+              <>
+                <Route path="/admin" element={<AdminOverview />} />
+                <Route path="/admin/sites" element={<SitesPage />} />
+                <Route path="/admin/customers" element={<CustomersPage />} />
+                <Route path="/admin/operators" element={<OperatorsPage />} />
+                <Route path="/admin/users" element={<UsersPage />} />
+              </>
+            ) : (
+              <Route path="/admin/*" element={<Navigate to="/" replace />} />
+            )}
 
             <Route path="/site-manager" element={<SiteManagerDashboard />} />
             <Route path="/operator" element={<CheckInOut />} />
